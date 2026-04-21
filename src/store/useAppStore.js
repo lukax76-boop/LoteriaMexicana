@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 import io from 'socket.io-client';
 import { SERVER_URL } from '../config/network';
 
@@ -45,15 +46,34 @@ export const useAppStore = create(
 
         // Auth Actions (Executed locally, but emit side-effects if needed)
         register: (email, alias, password, role = 'user') => {
+          if (!socket.connected) {
+            Alert.alert('Conectando...', 'El servidor en la nube se está despertando. Por favor espera unos segundos e intenta de nuevo.');
+            return;
+          }
+          
           socket.emit('dispatch', { type: 'REGISTER', payload: { email, alias, password, role } });
-          // Note: In a real app we'd wait for an ACK, but here we just optimistically login after a small delay
-          setTimeout(() => {
+          
+          let attempts = 0;
+          const checkUser = setInterval(() => {
             const user = get().users.find((u) => u.email === email);
-            if (user) set({ currentUser: user });
+            if (user) {
+              set({ currentUser: user });
+              clearInterval(checkUser);
+            }
+            attempts++;
+            if (attempts > 30) { // Esperar hasta 15 segundos por si hay latencia
+              clearInterval(checkUser);
+              Alert.alert('Aviso', 'El registro fue enviado pero el servidor está tardando. Por favor intenta iniciar sesión manualmente.');
+            }
           }, 500);
         },
         
         login: (email, password) => {
+          if (!socket.connected && get().users.length === 0) {
+            Alert.alert('Conectando...', 'El servidor en la nube se está despertando. Por favor espera unos segundos e intenta de nuevo.');
+            return false;
+          }
+          
           const user = get().users.find((u) => u.email === email && u.password === password);
           if (user) {
             set({ currentUser: user });
