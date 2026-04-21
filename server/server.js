@@ -5,6 +5,12 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
+
+// Ruta básica para que Render sepa que el servidor está vivo (Health Check)
+app.get('/', (req, res) => {
+  res.send('Lotería Server is running!');
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -213,7 +219,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.IO Multiplayer Server running on port ${PORT}`);
 });
