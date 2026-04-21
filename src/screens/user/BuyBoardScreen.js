@@ -4,6 +4,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { theme } from '../../config/theme';
 import { loteriaCards } from '../../config/cards';
 import LoteriaCard from '../../components/LoteriaCard';
+import * as Crypto from 'expo-crypto';
 
 export default function BuyBoardScreen({ navigation }) {
   const currentUser = useAppStore(state => state.currentUser);
@@ -16,14 +17,47 @@ export default function BuyBoardScreen({ navigation }) {
   const [mode, setMode] = useState('auto'); // 'auto' | 'manual'
   const [currentBoard, setCurrentBoard] = useState([]);
 
-  // Generate a random valid board (16 non-repeating cards from 1-54)
+  // Generate a random valid board (16 non-repeating cards from 1-54) with Max Dispersion
   const generateRandomBoard = () => {
-    const deck = Array.from({ length: 54 }, (_, i) => i + 1);
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
+    // 1. Obtener tablas previas del usuario para minimizar empates
+    const myPreviousBoards = currentGame && currentUser 
+      ? userBoards.filter(b => b.gameId === currentGame.id && b.userId === currentUser.id)
+      : [];
+
+    let bestBoard = [];
+    let bestScore = -1;
+
+    // 2. Generar 10 opciones usando Criptografía y elegir la que menos repita cartas
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const deck = Array.from({ length: 54 }, (_, i) => i + 1);
+      for (let i = deck.length - 1; i > 0; i--) {
+        // Entropía criptográfica perfecta en lugar de Math.random()
+        const bytes = Crypto.getRandomBytes(4);
+        const randNum = ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0;
+        const secureRandom = randNum / 4294967296;
+        
+        const j = Math.floor(secureRandom * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      const candidate = deck.slice(0, 16);
+      
+      // Calcular cuántas cartas se repiten con tablas anteriores
+      let intersectionCount = 0;
+      myPreviousBoards.forEach(board => {
+         candidate.forEach(card => {
+           if (board.cards.includes(card)) intersectionCount++;
+         });
+      });
+
+      // Queremos MINIMIZAR la intersección, es decir, MAXIMIZAR este score de "diferencia"
+      const score = (16 * myPreviousBoards.length) - intersectionCount;
+      if (score > bestScore) {
+        bestScore = score;
+        bestBoard = candidate;
+      }
     }
-    setCurrentBoard(deck.slice(0, 16));
+
+    setCurrentBoard(bestBoard);
   };
 
   useEffect(() => {
