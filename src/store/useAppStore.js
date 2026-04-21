@@ -5,8 +5,10 @@ import { Alert } from 'react-native';
 import io from 'socket.io-client';
 import { SERVER_URL } from '../config/network';
 
-// Connect to the multiplayer server
-const socket = io(SERVER_URL);
+// Connect to the multiplayer server using direct WebSockets to bypass React Native polling issues
+const socket = io(SERVER_URL, {
+  transports: ['websocket']
+});
 
 // Base initial state (Client side only tracks what it receives from server)
 const initialState = {
