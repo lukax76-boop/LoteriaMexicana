@@ -12,6 +12,8 @@ export default function GroupsScreen({ navigation }) {
   const [groupName, setGroupName] = useState('');
   const [aliasesInput, setAliasesInput] = useState('');
 
+  if (!currentUser) return null;
+
   const myGroups = groups.filter(g => g.members.includes(currentUser.id));
 
   const handleCreateGroup = () => {

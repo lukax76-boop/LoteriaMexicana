@@ -17,6 +17,8 @@ export default function BuyBoardScreen({ navigation }) {
   const [mode, setMode] = useState('auto'); // 'auto' | 'manual'
   const [currentBoard, setCurrentBoard] = useState([]);
 
+  if (!currentUser) return null;
+
   // Generate a random valid board (16 non-repeating cards from 1-54) with Max Dispersion
   const generateRandomBoard = () => {
     // 1. Obtener tablas previas del usuario para minimizar empates

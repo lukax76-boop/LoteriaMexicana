@@ -16,6 +16,8 @@ export default function ChatScreen({ route, navigation }) {
   const addGroupMembers = useAppStore(state => state.addGroupMembers);
   const removeGroupMember = useAppStore(state => state.removeGroupMember);
 
+  if (!currentUser) return null;
+
   const [text, setText] = useState('');
   const [showInfo, setShowInfo] = useState(false);
   const [newAliases, setNewAliases] = useState('');

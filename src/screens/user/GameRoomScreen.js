@@ -18,6 +18,8 @@ export default function GameRoomScreen({ navigation }) {
 
   const [isAudioEnabled, setIsAudioEnabled] = React.useState(false);
 
+  if (!currentUser) return null;
+
   // Efecto para narrar la carta sacada
   React.useEffect(() => {
     if (isAudioEnabled && currentGame?.drawnCards?.length > 0) {

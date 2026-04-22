@@ -16,6 +16,8 @@ export default function UserDashboardScreen({ navigation }) {
   const joinedGameId = useAppStore(state => state.joinedGameId);
   const groups = useAppStore(state => state.groups);
 
+  if (!currentUser) return null;
+
   const [activeTab, setActiveTab] = useState('universal'); // 'universal' | 'private'
   const [joinCode, setJoinCode] = useState('');
   
