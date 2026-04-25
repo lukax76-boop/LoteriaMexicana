@@ -83,6 +83,19 @@ export const useAppStore = create(
           }
           return false;
         },
+
+        recoverPassword: (email, alias) => {
+          return new Promise((resolve) => {
+            if (!socket.connected) {
+              resolve({ success: false, error: 'No hay conexión al servidor' });
+              return;
+            }
+            socket.emit('recoverPassword', { email, alias }, (response) => {
+              resolve(response);
+            });
+          });
+        },
+
         logout: () => set({ currentUser: null }),
 
         // Emit actions to server

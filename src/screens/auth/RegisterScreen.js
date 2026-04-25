@@ -7,7 +7,6 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [alias, setAlias] = useState('');
   const [password, setPassword] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false); // Only for testing purposes
   const register = useAppStore(state => state.register);
 
   const handleRegister = () => {
@@ -15,7 +14,7 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Error', 'Por favor llena todos los campos');
       return;
     }
-    register(email, alias, password, isAdmin ? 'admin' : 'user');
+    register(email, alias, password, 'user');
     // Navigation is handled automatically by the AppNavigator listening to currentUser
   };
 
@@ -27,6 +26,7 @@ export default function RegisterScreen({ navigation }) {
         <TextInput 
           style={styles.input}
           placeholder="Correo Electrónico"
+          placeholderTextColor="#666"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -35,22 +35,18 @@ export default function RegisterScreen({ navigation }) {
         <TextInput 
           style={styles.input}
           placeholder="Alias (Nombre en el juego)"
+          placeholderTextColor="#666"
           value={alias}
           onChangeText={setAlias}
         />
         <TextInput 
           style={styles.input}
           placeholder="Contraseña"
+          placeholderTextColor="#666"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
-
-        <View style={styles.switchContainer}>
-          <Text style={styles.switchLabel}>Registrar como Administrador</Text>
-          <Switch value={isAdmin} onValueChange={setIsAdmin} />
-        </View>
-        
         <TouchableOpacity style={styles.button} onPress={handleRegister}>
           <Text style={styles.buttonText}>Registrarse</Text>
         </TouchableOpacity>
@@ -93,17 +89,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.m,
     marginBottom: theme.spacing.m,
     fontSize: 16,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.m,
-    paddingHorizontal: theme.spacing.s,
-  },
-  switchLabel: {
-    fontSize: 14,
-    color: theme.colors.textLight,
+    color: '#000',
   },
   button: {
     backgroundColor: theme.colors.secondary,

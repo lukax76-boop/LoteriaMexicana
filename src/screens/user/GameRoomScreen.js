@@ -5,6 +5,7 @@ import { theme } from '../../config/theme';
 import LoteriaCard from '../../components/LoteriaCard';
 import { loteriaCards } from '../../config/cards';
 import * as Speech from 'expo-speech';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 export default function GameRoomScreen({ navigation }) {
   const currentUser = useAppStore(state => state.currentUser);
@@ -272,6 +273,14 @@ export default function GameRoomScreen({ navigation }) {
           </View>
         ))}
       </ScrollView>
+
+      <View style={{ alignItems: 'center', backgroundColor: '#FFF' }}>
+        <BannerAd
+          unitId={TestIds.BANNER}
+          size={BannerAdSize.BANNER}
+          requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+        />
+      </View>
 
       {currentGame.status === 'finished' && (
         <View style={styles.winnerOverlay}>

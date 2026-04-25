@@ -3,25 +3,34 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import { useAppStore } from '../../store/useAppStore';
 import { theme } from '../../config/theme';
 
-export default function LoginScreen({ navigation }) {
+export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const login = useAppStore(state => state.login);
+  const [alias, setAlias] = useState('');
+  const recoverPassword = useAppStore(state => state.recoverPassword);
 
-  const handleLogin = () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Por favor llena todos los campos');
+  const handleRecover = async () => {
+    if (!email || !alias) {
+      Alert.alert('Error', 'Por favor ingresa tu correo y tu alias');
       return;
     }
-    const success = login(email, password);
-    if (!success) {
-      Alert.alert('Error', 'Credenciales incorrectas');
+
+    const response = await recoverPassword(email.trim(), alias.trim());
+    
+    if (response.success) {
+      Alert.alert(
+        'Contraseña Recuperada',
+        `Tu contraseña es:\n\n${response.password}\n\nPor favor anótala en un lugar seguro.`,
+        [{ text: 'Ir a Iniciar Sesión', onPress: () => navigation.navigate('Login') }]
+      );
+    } else {
+      Alert.alert('Error', response.error || 'No se encontró una cuenta con ese correo y alias. Verifica tus datos.');
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Lotería Mexicana</Text>
+      <Text style={styles.title}>Recuperar Contraseña</Text>
+      <Text style={styles.subtitle}>Ingresa los datos con los que te registraste para recuperar tu acceso.</Text>
       
       <View style={styles.form}>
         <TextInput 
@@ -35,23 +44,18 @@ export default function LoginScreen({ navigation }) {
         />
         <TextInput 
           style={styles.input}
-          placeholder="Contraseña"
+          placeholder="Alias (Nombre en el juego)"
           placeholderTextColor="#666"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
+          value={alias}
+          onChangeText={setAlias}
         />
         
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Entrar</Text>
+        <TouchableOpacity style={styles.button} onPress={handleRecover}>
+          <Text style={styles.buttonText}>Mostrar mi Contraseña</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ marginTop: 20 }}>
-          <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={styles.linkText}>Volver</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -66,9 +70,15 @@ const styles = StyleSheet.create({
     padding: theme.spacing.l,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: theme.colors.primary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.s,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: theme.colors.textLight,
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
   },
@@ -91,21 +101,20 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   button: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondary,
     padding: theme.spacing.m,
     borderRadius: theme.borderRadius.m,
     alignItems: 'center',
     marginTop: theme.spacing.s,
   },
   buttonText: {
-    color: '#FFF',
+    color: theme.colors.text,
     fontSize: 18,
     fontWeight: 'bold',
   },
   linkText: {
     color: theme.colors.accent,
     textAlign: 'center',
-    marginTop: theme.spacing.l,
     fontSize: 16,
   }
 });

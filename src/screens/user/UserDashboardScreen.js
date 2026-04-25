@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, TextInput,
 import { useAppStore } from '../../store/useAppStore';
 import { theme } from '../../config/theme';
 import LoteriaCard from '../../components/LoteriaCard';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 export default function UserDashboardScreen({ navigation }) {
   const currentUser = useAppStore(state => state.currentUser);
@@ -237,6 +238,14 @@ export default function UserDashboardScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+
+      <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 10 }}>
+        <BannerAd
+          unitId={TestIds.BANNER}
+          size={BannerAdSize.BANNER}
+          requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+        />
+      </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
         <Text style={styles.logoutText}>Cerrar Sesión</Text>

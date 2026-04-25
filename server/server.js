@@ -378,6 +378,16 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
+
+  socket.on('recoverPassword', (data, callback) => {
+    const { email, alias } = data;
+    const user = state.users.find(u => u.email === email && u.alias === alias);
+    if (user) {
+      callback({ success: true, password: user.password });
+    } else {
+      callback({ success: false });
+    }
+  });
 });
 
 const PORT = Number(process.env.PORT) || 3000;
