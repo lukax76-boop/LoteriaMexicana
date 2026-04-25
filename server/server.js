@@ -2,6 +2,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+require('dotenv').config();
+const mongoose = require('mongoose');
 
 const app = express();
 app.use(cors());
@@ -18,32 +20,112 @@ const io = new Server(server, {
   }
 });
 
-// Mock DB Initial State
+// Database connection
+const MONGODB_URI = process.env.MONGODB_URI;
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log('Connected to MongoDB Atlas'))
+    .catch(err => console.error('MongoDB connection error:', err));
+} else {
+  console.log('No MONGODB_URI provided. Running in memory only.');
+}
+
+const User = mongoose.model('User', new mongoose.Schema({
+  id: String, email: String, alias: String, password: String, role: String, credits: Number
+}, { collection: 'users' }));
+
+const Game = mongoose.model('Game', new mongoose.Schema({
+  id: String, type: String, creatorId: String, status: String, price: Number, 
+  prizePercentageAdmin: Number, scheduledDate: String, scheduledTime: String, 
+  pot: Number, currentCards: [Number], drawnCards: [Number], winners: mongoose.Schema.Types.Mixed
+}, { collection: 'games' }));
+
+const UserBoard = mongoose.model('UserBoard', new mongoose.Schema({
+  id: String, userId: String, gameId: String, cards: [Number]
+}, { collection: 'userBoards' }));
+
+const Group = mongoose.model('Group', new mongoose.Schema({
+  id: String, name: String, creatorId: String, members: [String]
+}, { collection: 'groups' }));
+
+const Message = mongoose.model('Message', new mongoose.Schema({
+  id: String, groupId: String, senderId: String, text: String, timestamp: String
+}, { collection: 'messages' }));
+
+// In-Memory State
 let state = {
   users: [],
-  games: [{
-    id: 'universal_1',
-    type: 'universal',
-    creatorId: 'admin',
-    status: 'pending',
-    price: 50,
-    prizePercentageAdmin: 80,
-    pot: 0,
-    currentCards: (() => {
-      const deck = Array.from({ length: 54 }, (_, i) => i + 1);
-      for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
-      }
-      return deck;
-    })(),
-    drawnCards: [],
-    winners: [],
-  }],
+  games: [],
   userBoards: [],
   groups: [],
   messages: [],
 };
+
+async function loadStateFromDB() {
+  if (!MONGODB_URI) {
+    // If no DB, insert a mock game for testing
+    state.games.push({
+      id: 'universal_1',
+      type: 'universal',
+      creatorId: 'admin',
+      status: 'pending',
+      price: 50,
+      prizePercentageAdmin: 80,
+      pot: 0,
+      currentCards: (() => {
+        const deck = Array.from({ length: 54 }, (_, i) => i + 1);
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        return deck;
+      })(),
+      drawnCards: [],
+      winners: [],
+    });
+    return;
+  }
+
+  try {
+    state.users = await User.find({}, '-_id -__v').lean();
+    state.games = await Game.find({}, '-_id -__v').lean();
+    state.userBoards = await UserBoard.find({}, '-_id -__v').lean();
+    state.groups = await Group.find({}, '-_id -__v').lean();
+    state.messages = await Message.find({}, '-_id -__v').lean();
+
+    if (state.games.length === 0) {
+      // Create an initial game if DB is empty
+      const initialGame = {
+        id: 'universal_1',
+        type: 'universal',
+        creatorId: 'admin',
+        status: 'pending',
+        price: 50,
+        prizePercentageAdmin: 80,
+        pot: 0,
+        currentCards: (() => {
+          const deck = Array.from({ length: 54 }, (_, i) => i + 1);
+          for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+          }
+          return deck;
+        })(),
+        drawnCards: [],
+        winners: [],
+      };
+      await Game.create(initialGame);
+      state.games.push(initialGame);
+    }
+
+    console.log('State loaded from DB successfully! Records found:');
+    console.log(`Users: ${state.users.length}, Games: ${state.games.length}, Boards: ${state.userBoards.length}, Groups: ${state.groups.length}, Messages: ${state.messages.length}`);
+  } catch (err) {
+    console.error('Error loading state from DB:', err);
+  }
+}
+
+loadStateFromDB();
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -60,6 +142,7 @@ io.on('connection', (socket) => {
         const { email, alias, password, role } = payload;
         const newUser = { id: Date.now().toString(), email, alias, password, role, credits: 100 };
         state.users.push(newUser);
+        if (MONGODB_URI) User.create(newUser).catch(console.error);
         break;
       }
       
@@ -68,13 +151,14 @@ io.on('connection', (socket) => {
         const userIndex = state.users.findIndex(u => u.id === userId);
         if (userIndex !== -1) {
           state.users[userIndex].credits += amount;
+          if (MONGODB_URI) User.findOneAndUpdate({ id: userId }, { credits: state.users[userIndex].credits }).catch(console.error);
         }
         break;
       }
 
       case 'CREATE_GAME': {
-        const { id, price, prizePercentageAdmin, creatorId, type, scheduledDate, scheduledTime } = payload || {};
-        const isUniversal = type !== 'private';
+        const { id, price, prizePercentageAdmin, creatorId, type: gameType, scheduledDate, scheduledTime } = payload || {};
+        const isUniversal = gameType !== 'private';
         const newGame = {
           id: id || (isUniversal ? 'univ_' + Date.now().toString() : Math.random().toString(36).substring(2, 8).toUpperCase()),
           type: isUniversal ? 'universal' : 'private',
@@ -97,6 +181,7 @@ io.on('connection', (socket) => {
           winners: [],
         };
         state.games.push(newGame);
+        if (MONGODB_URI) Game.create(newGame).catch(console.error);
         break;
       }
 
@@ -105,6 +190,7 @@ io.on('connection', (socket) => {
         const game = state.games.find(g => g.id === gameId);
         if (game) {
           game.status = 'active';
+          if (MONGODB_URI) Game.findOneAndUpdate({ id: gameId }, { status: 'active' }).catch(console.error);
         }
         break;
       }
@@ -137,6 +223,7 @@ io.on('connection', (socket) => {
           game.status = 'finished';
           game.winners = winners;
         }
+        if (MONGODB_URI) Game.findOneAndUpdate({ id: gameId }, { status: game.status, currentCards: game.currentCards, drawnCards: game.drawnCards, winners: game.winners }).catch(console.error);
         break;
       }
 
@@ -150,6 +237,12 @@ io.on('connection', (socket) => {
           const newBoard = { id: Date.now().toString(), userId, gameId, cards };
           state.userBoards.push(newBoard);
           game.pot += game.price;
+          
+          if (MONGODB_URI) {
+            User.findOneAndUpdate({ id: userId }, { credits: state.users[userIndex].credits }).catch(console.error);
+            UserBoard.create(newBoard).catch(console.error);
+            Game.findOneAndUpdate({ id: gameId }, { pot: game.pot }).catch(console.error);
+          }
         }
         break;
       }
@@ -168,6 +261,7 @@ io.on('connection', (socket) => {
           members: [...new Set(members)],
         };
         state.groups.push(newGroup);
+        if (MONGODB_URI) Group.create(newGroup).catch(console.error);
         break;
       }
 
@@ -183,6 +277,7 @@ io.on('connection', (socket) => {
             timestamp: new Date().toISOString(),
           };
           state.messages.push(newMessage);
+          if (MONGODB_URI) Message.create(newMessage).catch(console.error);
         }
         break;
       }
@@ -195,6 +290,7 @@ io.on('connection', (socket) => {
           const newMembers = state.users.filter(u => aliases.includes(u.alias)).map(u => u.id);
           const mergedMembers = [...new Set([...group.members, ...newMembers])];
           group.members = mergedMembers;
+          if (MONGODB_URI) Group.findOneAndUpdate({ id: groupId }, { members: group.members }).catch(console.error);
         }
         break;
       }
@@ -205,6 +301,7 @@ io.on('connection', (socket) => {
         
         if (group && group.creatorId === requesterId && targetUserId !== group.creatorId) {
           group.members = group.members.filter(mId => mId !== targetUserId);
+          if (MONGODB_URI) Group.findOneAndUpdate({ id: groupId }, { members: group.members }).catch(console.error);
         }
         break;
       }
