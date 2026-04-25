@@ -41,7 +41,7 @@ const Game = mongoose.model('Game', new mongoose.Schema({
 }, { collection: 'games' }));
 
 const UserBoard = mongoose.model('UserBoard', new mongoose.Schema({
-  id: String, userId: String, gameId: String, cards: [Number]
+  id: String, userId: String, gameId: String, cards: [Number], markedCards: [Number], markMode: String
 }, { collection: 'userBoards' }));
 
 const Group = mongoose.model('Group', new mongoose.Schema({
@@ -190,6 +190,11 @@ io.on('connection', (socket) => {
         const game = state.games.find(g => g.id === gameId);
         if (game) {
           game.status = 'active';
+          // Initialize empty markedCards and default 'auto' mode if not present
+          state.userBoards.filter(b => b.gameId === gameId).forEach(b => {
+            if (!b.markedCards) b.markedCards = [];
+            if (!b.markMode) b.markMode = 'auto';
+          });
           if (MONGODB_URI) Game.findOneAndUpdate({ id: gameId }, { status: 'active' }).catch(console.error);
         }
         break;
@@ -201,18 +206,30 @@ io.on('connection', (socket) => {
         
         if (!game || game.status !== 'active') break;
         
+        let drawnCard = null;
         if (game.currentCards.length > 0) {
-          const card = game.currentCards.shift();
-          game.drawnCards.push(card);
+          drawnCard = game.currentCards.shift();
+          game.drawnCards.push(drawnCard);
         }
         
-        // Check winners
+        // Auto-mark and Check winners
         const boardsForGame = state.userBoards.filter(b => b.gameId === game.id);
         const winners = [];
         
         boardsForGame.forEach(board => {
-          const hasWon = board.cards.every(c => game.drawnCards.includes(c));
-          if (hasWon) {
+          // Auto-mark if the board is in 'auto' mode and has the drawn card
+          if (board.markMode === 'auto' && drawnCard && board.cards.includes(drawnCard)) {
+            if (!board.markedCards) board.markedCards = [];
+            if (!board.markedCards.includes(drawnCard)) {
+              board.markedCards.push(drawnCard);
+              if (MONGODB_URI) UserBoard.findOneAndUpdate({ id: board.id }, { markedCards: board.markedCards }).catch(console.error);
+            }
+          }
+
+          // Verificamos si la tabla está llena Y completamente marcada con cartas que sí salieron
+          const isFullAndMarked = board.cards.every(c => board.markedCards?.includes(c) && game.drawnCards.includes(c));
+          
+          if (isFullAndMarked) {
             const user = state.users.find(u => u.id === board.userId);
             if (user) winners.push(user);
           }
@@ -227,6 +244,53 @@ io.on('connection', (socket) => {
         break;
       }
 
+      case 'SET_MARK_MODE': {
+        const { userId, gameId, mode } = payload;
+        const userBoardsInGame = state.userBoards.filter(b => b.userId === userId && b.gameId === gameId);
+        userBoardsInGame.forEach(board => {
+          board.markMode = mode;
+          if (MONGODB_URI) UserBoard.findOneAndUpdate({ id: board.id }, { markMode: mode }).catch(console.error);
+        });
+        break;
+      }
+
+      case 'MARK_CARD': {
+        const { boardId, cardId, userId } = payload;
+        const board = state.userBoards.find(b => b.id === boardId && b.userId === userId);
+        const game = state.games.find(g => g.id === board?.gameId);
+        
+        if (board && game && game.status === 'active' && game.drawnCards.includes(cardId)) {
+          if (!board.markedCards) board.markedCards = [];
+          if (!board.markedCards.includes(cardId)) {
+            board.markedCards.push(cardId);
+            if (MONGODB_URI) UserBoard.findOneAndUpdate({ id: board.id }, { markedCards: board.markedCards }).catch(console.error);
+            
+            // Check win condition after marking
+            const isFullAndMarked = board.cards.every(c => board.markedCards.includes(c) && game.drawnCards.includes(c));
+            if (isFullAndMarked) {
+              const user = state.users.find(u => u.id === board.userId);
+              game.status = 'finished';
+              game.winners = [user];
+              if (MONGODB_URI) Game.findOneAndUpdate({ id: game.id }, { status: 'finished', winners: game.winners }).catch(console.error);
+            }
+          }
+        }
+        break;
+      }
+
+      case 'UNMARK_CARD': {
+        const { boardId, cardId, userId } = payload;
+        const board = state.userBoards.find(b => b.id === boardId && b.userId === userId);
+        const game = state.games.find(g => g.id === board?.gameId);
+        
+        if (board && game && game.status === 'active') {
+          if (!board.markedCards) board.markedCards = [];
+          board.markedCards = board.markedCards.filter(c => c !== cardId);
+          if (MONGODB_URI) UserBoard.findOneAndUpdate({ id: board.id }, { markedCards: board.markedCards }).catch(console.error);
+        }
+        break;
+      }
+
       case 'BUY_BOARD': {
         const { userId, gameId, cards } = payload;
         const userIndex = state.users.findIndex(u => u.id === userId);
@@ -234,7 +298,7 @@ io.on('connection', (socket) => {
         
         if (userIndex !== -1 && game && state.users[userIndex].credits >= game.price) {
           state.users[userIndex].credits -= game.price;
-          const newBoard = { id: Date.now().toString(), userId, gameId, cards };
+          const newBoard = { id: Date.now().toString(), userId, gameId, cards, markedCards: [], markMode: 'auto' };
           state.userBoards.push(newBoard);
           game.pot += game.price;
           

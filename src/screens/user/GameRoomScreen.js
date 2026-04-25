@@ -15,6 +15,9 @@ export default function GameRoomScreen({ navigation }) {
   
   const startGame = useAppStore(state => state.startGame);
   const drawCard = useAppStore(state => state.drawCard);
+  const setMarkMode = useAppStore(state => state.setMarkMode);
+  const markCard = useAppStore(state => state.markCard);
+  const unmarkCard = useAppStore(state => state.unmarkCard);
 
   const [isAudioEnabled, setIsAudioEnabled] = React.useState(false);
 
@@ -52,8 +55,28 @@ export default function GameRoomScreen({ navigation }) {
   const myBoards = userBoards.filter(b => b.userId === currentUser.id && b.gameId === currentGame.id);
   const prize = currentGame.pot * ((100 - currentGame.prizePercentageAdmin) / 100);
 
-  // Determine if a card on the board has been drawn
-  const isMarked = (card) => currentGame.drawnCards?.includes(card);
+  // Determine if a card on the board has been marked
+  const isMarked = (board, card) => board.markedCards?.includes(card);
+
+  // Determine user's current mark mode from their first board (all their boards share the mode)
+  const currentMarkMode = myBoards.length > 0 ? (myBoards[0].markMode || 'auto') : 'auto';
+
+  const toggleMarkMode = () => {
+    const newMode = currentMarkMode === 'auto' ? 'manual' : 'auto';
+    setMarkMode(currentGame.id, newMode);
+  };
+
+  const handleCardPress = (board, card) => {
+    if (currentGame.status === 'finished') return;
+    if (board.markMode === 'auto') return; // Ignore manual tap in auto mode
+    if (!currentGame.drawnCards.includes(card)) return; // Only allow marking drawn cards
+
+    if (isMarked(board, card)) {
+      unmarkCard(board.id, card);
+    } else {
+      markCard(board.id, card);
+    }
+  };
 
   // Calculate statistics: who is closest to winning
   const boardsForGame = userBoards.filter(b => b.gameId === currentGame.id);
@@ -122,6 +145,25 @@ export default function GameRoomScreen({ navigation }) {
               {isAudioEnabled ? '🔊 Narrador: ON' : '🔇 Narrador: OFF'}
             </Text>
           </TouchableOpacity>
+          
+          {myBoards.length > 0 && (
+            <TouchableOpacity 
+              style={{ 
+                backgroundColor: currentMarkMode === 'auto' ? theme.colors.primary : '#E65100', 
+                paddingHorizontal: 12, 
+                paddingVertical: 5, 
+                borderRadius: 15, 
+                marginTop: 5,
+                borderWidth: 1,
+                borderColor: '#FFF'
+              }}
+              onPress={toggleMarkMode}
+            >
+              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>
+                {currentMarkMode === 'auto' ? '⚙️ Marcado: AUTO' : '🖐️ Marcado: MANUAL'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -216,10 +258,15 @@ export default function GameRoomScreen({ navigation }) {
             )}
             <View style={styles.boardContainer}>
               {board.cards?.map((card, index) => (
-                <View key={index} style={[styles.cardCell, isMarked(card) && styles.markedCell]}>
+                <TouchableOpacity 
+                  key={index} 
+                  style={[styles.cardCell, isMarked(board, card) && styles.markedCell]}
+                  onPress={() => handleCardPress(board, card)}
+                  activeOpacity={0.7}
+                >
                   <LoteriaCard id={card} style={styles.cardImage} emojiSize={35} nameSize={9} numSize={10} />
-                  {isMarked(card) && <View style={styles.bean} />}
-                </View>
+                  {isMarked(board, card) && <Image source={require('../../assets/bean.png')} style={styles.bean} />}
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -388,14 +435,14 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   markedCell: {
-    opacity: 0.8,
+    opacity: 0.85,
   },
   bean: {
     position: 'absolute',
-    width: 25,
-    height: 25,
-    backgroundColor: 'rgba(139, 69, 19, 0.85)',
-    borderRadius: 12.5,
+    width: 35,
+    height: 35,
+    resizeMode: 'contain',
+    zIndex: 10,
   },
   winnerOverlay: {
     ...StyleSheet.absoluteFillObject,

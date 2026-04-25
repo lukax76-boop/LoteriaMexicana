@@ -147,6 +147,27 @@ export const useAppStore = create(
           }
         },
 
+        setMarkMode: (gameId, mode) => {
+          const user = get().currentUser;
+          if (user) {
+            socket.emit('dispatch', { type: 'SET_MARK_MODE', payload: { userId: user.id, gameId, mode } });
+          }
+        },
+
+        markCard: (boardId, cardId) => {
+          const user = get().currentUser;
+          if (user) {
+            socket.emit('dispatch', { type: 'MARK_CARD', payload: { boardId, cardId, userId: user.id } });
+          }
+        },
+
+        unmarkCard: (boardId, cardId) => {
+          const user = get().currentUser;
+          if (user) {
+            socket.emit('dispatch', { type: 'UNMARK_CARD', payload: { boardId, cardId, userId: user.id } });
+          }
+        },
+
         addGroupMembers: (groupId, aliases) => {
           const user = get().currentUser;
           if (user) {
