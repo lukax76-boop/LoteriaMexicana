@@ -16,7 +16,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "expo": "~54.0.33",
-    "expo-crypto": "~14.0.2",
+    "expo-build-properties": "~1.0.10",
+    "expo-crypto": "~15.0.8",
     "expo-speech": "~14.0.8",
     "expo-status-bar": "~3.0.9",
     "express": "^4.21.2",
@@ -36,6 +37,6 @@
   "private": true,
   "devDependencies": {
     "babel-plugin-transform-import-meta": "^2.3.3",
-    "babel-preset-expo": "^55.0.17"
+    "babel-preset-expo": "~54.0.10"
   }
 }
