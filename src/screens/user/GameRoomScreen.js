@@ -266,7 +266,7 @@ export default function GameRoomScreen({ navigation }) {
                   activeOpacity={0.7}
                 >
                   <LoteriaCard id={card} style={styles.cardImage} emojiSize={35} nameSize={9} numSize={10} />
-                  {isMarked(board, card) && <Image source={require('../../../assets/bean.png')} style={styles.bean} />}
+                  {isMarked(board, card) && <Image source={require('../../../assets/bean.jpg')} style={styles.bean} />}
                 </TouchableOpacity>
               ))}
             </View>
