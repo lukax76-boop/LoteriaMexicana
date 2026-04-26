@@ -276,7 +276,7 @@ export default function GameRoomScreen({ navigation }) {
 
       <View style={{ alignItems: 'center', backgroundColor: '#FFF' }}>
         <BannerAd
-          unitId={TestIds.BANNER}
+          unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
           size={BannerAdSize.BANNER}
           requestOptions={{ requestNonPersonalizedAdsOnly: true }}
         />
