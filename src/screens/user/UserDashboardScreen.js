@@ -28,8 +28,9 @@ export default function UserDashboardScreen({ navigation }) {
 
   // State for create game modal
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [winMode, setWinMode] = useState('full_board'); // 'full_board', 'traditional', 'center'
+  const [totalRounds, setTotalRounds] = useState(1);
 
+  const onlinePlayers = useAppStore(state => state.onlinePlayers);
   const myGroups = groups.filter(g => g.members.includes(currentUser.id));
 
   const handleBuyCredits = () => {
@@ -42,7 +43,7 @@ export default function UserDashboardScreen({ navigation }) {
   };
 
   const confirmCreatePrivate = () => {
-    createPrivateGame(50, winMode);
+    createPrivateGame(50, totalRounds);
     setShowCreateModal(false);
   };
 
@@ -182,9 +183,14 @@ export default function UserDashboardScreen({ navigation }) {
           <Text style={styles.title}>Lotería Mexicana</Text>
           <Text style={styles.subtitle}>{currentUser.alias}</Text>
         </View>
-        <TouchableOpacity style={styles.groupsBtn} onPress={() => navigation.navigate('Groups')}>
-          <Text style={styles.groupsBtnText}>👥 Amigos</Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: 'flex-end' }}>
+          <View style={styles.onlineBadge}>
+            <Text style={styles.onlineBadgeText}>🟢 {onlinePlayers} en línea</Text>
+          </View>
+          <TouchableOpacity style={[styles.groupsBtn, {marginTop: 8}]} onPress={() => navigation.navigate('Groups')}>
+            <Text style={styles.groupsBtnText}>👥 Amigos</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.walletCard}>
@@ -294,33 +300,29 @@ export default function UserDashboardScreen({ navigation }) {
       <Modal visible={showCreateModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Configurar Jugada</Text>
+            <Text style={styles.modalTitle}>Configurar Torneo</Text>
             
-            <Text style={{ fontWeight: 'bold', alignSelf: 'flex-start', marginBottom: 10, marginTop: 10 }}>Modo de ganar:</Text>
+            <Text style={{ fontWeight: 'bold', alignSelf: 'flex-start', marginBottom: 10, marginTop: 10 }}>Cantidad de Rondas:</Text>
+            <Text style={{ color: '#666', fontSize: 12, marginBottom: 15, textAlign: 'left' }}>
+              Las rondas 1 hasta N-1 se jugarán en "Formas Tradicionales". La ronda final será "Solo Centro" y pagará el 50% de la bolsa acumulada.
+            </Text>
             
-            <TouchableOpacity 
-              style={[styles.winModeBtn, winMode === 'full_board' && styles.winModeBtnActive]}
-              onPress={() => setWinMode('full_board')}
-            >
-              <Text style={[styles.winModeText, winMode === 'full_board' && styles.winModeTextActive]}>Carta Llena (16 cartas)</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.winModeBtn, winMode === 'traditional' && styles.winModeBtnActive]}
-              onPress={() => setWinMode('traditional')}
-            >
-              <Text style={[styles.winModeText, winMode === 'traditional' && styles.winModeTextActive]}>Formas Tradicionales (Línea, Esquinas, Centro)</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.winModeBtn, winMode === 'center' && styles.winModeBtnActive]}
-              onPress={() => setWinMode('center')}
-            >
-              <Text style={[styles.winModeText, winMode === 'center' && styles.winModeTextActive]}>Solo Centro (4 cartas interiores)</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 10 }}>
+              {[1, 2, 3, 5].map(rounds => (
+                <TouchableOpacity 
+                  key={rounds}
+                  style={[styles.winModeBtn, { flex: 1, marginHorizontal: 2, padding: 10 }, totalRounds === rounds && styles.winModeBtnActive]}
+                  onPress={() => setTotalRounds(rounds)}
+                >
+                  <Text style={[styles.winModeText, totalRounds === rounds && styles.winModeTextActive]}>
+                    {rounds} {rounds === 1 ? 'Juego' : 'Juegos'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <TouchableOpacity style={[styles.createBtn, { width: '100%', marginTop: 20 }]} onPress={confirmCreatePrivate}>
-              <Text style={styles.createBtnText}>Crear Jugada</Text>
+              <Text style={styles.createBtnText}>Crear Torneo</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowCreateModal(false)}>
@@ -664,5 +666,18 @@ const styles = StyleSheet.create({
   winModeTextActive: {
     color: theme.colors.primary,
     fontWeight: 'bold'
+  },
+  onlineBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#81C784',
+  },
+  onlineBadgeText: {
+    color: '#2E7D32',
+    fontSize: 12,
+    fontWeight: 'bold',
   }
 });

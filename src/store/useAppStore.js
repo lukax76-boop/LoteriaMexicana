@@ -18,6 +18,7 @@ const initialState = {
   userBoards: [],
   groups: [],
   messages: [],
+  onlinePlayers: 0,
 };
 
 export const useAppStore = create(
@@ -41,6 +42,10 @@ export const useAppStore = create(
           }
           return { ...serverState, currentUser: updatedCurrentUser };
         });
+      });
+
+      socket.on('onlinePlayers', (count) => {
+        set({ onlinePlayers: count });
       });
 
       return {
@@ -106,15 +111,15 @@ export const useAppStore = create(
           }
         },
 
-        createGame: (price = 50, prizePercentageAdmin = 80, scheduledDate = null, scheduledTime = null) => {
-          socket.emit('dispatch', { type: 'CREATE_GAME', payload: { price, prizePercentageAdmin, type: 'universal', scheduledDate, scheduledTime } });
+        createGame: (price = 50, prizePercentageAdmin = 80, scheduledDate = null, scheduledTime = null, totalRounds = 1) => {
+          socket.emit('dispatch', { type: 'CREATE_GAME', payload: { price, prizePercentageAdmin, type: 'universal', scheduledDate, scheduledTime, totalRounds } });
         },
         
-        createPrivateGame: (price = 50, winMode = 'full_board') => {
+        createPrivateGame: (price = 50, totalRounds = 1) => {
           const user = get().currentUser;
           if (user) {
             const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-            socket.emit('dispatch', { type: 'CREATE_GAME', payload: { id: gameId, price, prizePercentageAdmin: 0, creatorId: user.id, type: 'private', winMode } });
+            socket.emit('dispatch', { type: 'CREATE_GAME', payload: { id: gameId, price, prizePercentageAdmin: 0, creatorId: user.id, type: 'private', totalRounds } });
             set({ joinedGameId: gameId });
           }
         },
@@ -129,6 +134,10 @@ export const useAppStore = create(
         
         startGame: (gameId) => {
           socket.emit('dispatch', { type: 'START_GAME', payload: { gameId } });
+        },
+        
+        startNextRound: (gameId) => {
+          socket.emit('dispatch', { type: 'NEXT_ROUND', payload: { gameId } });
         },
         
         drawCard: (gameId) => {

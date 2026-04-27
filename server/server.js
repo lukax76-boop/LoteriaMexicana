@@ -133,6 +133,17 @@ io.on('connection', (socket) => {
   // Send the initial state to the connected user
   socket.emit('syncState', state);
 
+  const broadcastOnlinePlayers = () => {
+    io.emit('onlinePlayers', io.engine.clientsCount);
+  };
+
+  broadcastOnlinePlayers();
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    broadcastOnlinePlayers();
+  });
+
   socket.on('dispatch', (action) => {
     const { type, payload } = action;
     console.log('Action received:', type);
@@ -157,8 +168,9 @@ io.on('connection', (socket) => {
       }
 
       case 'CREATE_GAME': {
-        const { id, price, prizePercentageAdmin, creatorId, type: gameType, scheduledDate, scheduledTime, winMode } = payload || {};
+        const { id, price, prizePercentageAdmin, creatorId, type: gameType, scheduledDate, scheduledTime, totalRounds } = payload || {};
         const isUniversal = gameType !== 'private';
+        const rounds = totalRounds || 1;
         const newGame = {
           id: id || (isUniversal ? 'univ_' + Date.now().toString() : Math.random().toString(36).substring(2, 8).toUpperCase()),
           type: isUniversal ? 'universal' : 'private',
@@ -168,7 +180,11 @@ io.on('connection', (socket) => {
           prizePercentageAdmin: prizePercentageAdmin || 80,
           scheduledDate: isUniversal ? scheduledDate : null,
           scheduledTime: isUniversal ? scheduledTime : null,
-          winMode: winMode || 'full_board',
+          isTournament: true,
+          totalRounds: rounds,
+          currentRound: 1,
+          roundWinners: [],
+          winMode: rounds === 1 ? 'center' : 'traditional',
           pot: 0,
           currentCards: (() => {
             const deck = Array.from({ length: 54 }, (_, i) => i + 1);
@@ -272,10 +288,73 @@ io.on('connection', (socket) => {
 
         // Terminar si hay ganadores o si ya no quedan cartas
         if (winners.length > 0 || game.currentCards.length === 0) {
-          game.status = 'finished';
-          game.winners = winners;
+          
+          let roundPrize = 0;
+          if (winners.length > 0) {
+            const totalPotToDistribute = game.pot * ( (100 - game.prizePercentageAdmin) / 100 );
+            if (game.totalRounds === 1) {
+              roundPrize = totalPotToDistribute;
+            } else if (game.currentRound === game.totalRounds) {
+              roundPrize = totalPotToDistribute * 0.50;
+            } else {
+              roundPrize = (totalPotToDistribute * 0.50) / (game.totalRounds - 1);
+            }
+            
+            const prizePerWinner = roundPrize / winners.length;
+            winners.forEach(w => {
+              const uIdx = state.users.findIndex(u => u.id === w.id);
+              if (uIdx !== -1) {
+                state.users[uIdx].credits += prizePerWinner;
+                if (MONGODB_URI) User.findOneAndUpdate({ id: w.id }, { credits: state.users[uIdx].credits }).catch(console.error);
+              }
+            });
+            
+            game.roundWinners.push({
+              round: game.currentRound,
+              winners: winners,
+              prizePerWinner: prizePerWinner,
+              totalRoundPrize: roundPrize
+            });
+          }
+
+          if (game.currentRound >= game.totalRounds) {
+            game.status = 'finished';
+            game.winners = winners; // Ganadores de la última ronda (para compatibilidad)
+          } else {
+            game.status = 'round_finished';
+            game.winners = winners;
+          }
         }
-        if (MONGODB_URI) Game.findOneAndUpdate({ id: gameId }, { status: game.status, currentCards: game.currentCards, drawnCards: game.drawnCards, winners: game.winners }).catch(console.error);
+        if (MONGODB_URI) Game.findOneAndUpdate({ id: gameId }, { status: game.status, currentCards: game.currentCards, drawnCards: game.drawnCards, winners: game.winners, roundWinners: game.roundWinners }).catch(console.error);
+        break;
+      }
+
+      case 'NEXT_ROUND': {
+        const { gameId } = payload;
+        const game = state.games.find(g => g.id === gameId);
+        if (game && game.status === 'round_finished' && game.currentRound < game.totalRounds) {
+          game.currentRound += 1;
+          game.status = 'active';
+          game.drawnCards = [];
+          game.winners = [];
+          game.winMode = game.currentRound === game.totalRounds ? 'center' : 'traditional';
+          
+          game.currentCards = (() => {
+            const deck = Array.from({ length: 54 }, (_, i) => i + 1);
+            for (let i = deck.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+          })();
+
+          state.userBoards.filter(b => b.gameId === gameId).forEach(b => {
+            b.markedCards = [];
+            if (MONGODB_URI) UserBoard.findOneAndUpdate({ id: b.id }, { markedCards: [] }).catch(console.error);
+          });
+          
+          if (MONGODB_URI) Game.findOneAndUpdate({ id: gameId }, { status: 'active', currentRound: game.currentRound, currentCards: game.currentCards, drawnCards: [], winners: [], winMode: game.winMode }).catch(console.error);
+        }
         break;
       }
 

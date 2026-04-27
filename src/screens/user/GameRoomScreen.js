@@ -19,6 +19,7 @@ export default function GameRoomScreen({ navigation }) {
   const setMarkMode = useAppStore(state => state.setMarkMode);
   const markCard = useAppStore(state => state.markCard);
   const unmarkCard = useAppStore(state => state.unmarkCard);
+  const startNextRound = useAppStore(state => state.startNextRound);
 
   const [isAudioEnabled, setIsAudioEnabled] = React.useState(false);
 
@@ -129,6 +130,15 @@ export default function GameRoomScreen({ navigation }) {
           <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>← Volver</Text>
         </TouchableOpacity>
         
+        <View style={{ alignItems: 'center', marginHorizontal: 10 }}>
+          {currentGame.isTournament && (
+            <>
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>Torneo</Text>
+              <Text style={{ color: '#FFF', fontSize: 12 }}>Ronda {currentGame.currentRound} de {currentGame.totalRounds}</Text>
+            </>
+          )}
+        </View>
+
         <View style={{ alignItems: 'flex-end', flex: 1 }}>
           <Text style={styles.potText}>Premio: ${prize}</Text>
           <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold', marginTop: 2, marginBottom: 2 }}>{getWinModeText()}</Text>
@@ -291,25 +301,67 @@ export default function GameRoomScreen({ navigation }) {
         />
       </View>
 
-      {currentGame.status === 'finished' && (
+      {/* Modal Fin de Ronda o Torneo */}
+      {(currentGame.status === 'finished' || currentGame.status === 'round_finished') && (
         <View style={styles.winnerOverlay}>
           <View style={styles.winnerModal}>
-            <Text style={styles.winnerText}>¡JUEGO TERMINADO!</Text>
-            <Text style={styles.winnerSubText}>Ganador(es):</Text>
-            {currentGame.winners?.map(w => (
-              <Text key={w.id} style={styles.winnerName}>{w.alias}</Text>
-            ))}
-            {currentGame.winners?.length === 0 && (
-              <Text style={styles.winnerName}>Nadie (Se agotó la baraja)</Text>
+            <Text style={styles.winnerText}>
+              {currentGame.status === 'finished' ? '¡TORNEO TERMINADO!' : `¡FIN DE RONDA ${currentGame.currentRound}!`}
+            </Text>
+            
+            {currentGame.status === 'round_finished' && (
+              <>
+                <Text style={styles.winnerSubText}>Ganador(es) de la ronda:</Text>
+                {currentGame.winners?.map(w => (
+                  <Text key={w.id} style={styles.winnerName}>{w.alias}</Text>
+                ))}
+                
+                {isOrganizer && (
+                  <TouchableOpacity 
+                    style={[styles.orgButton, { backgroundColor: theme.colors.primary, marginTop: 20 }]} 
+                    onPress={() => startNextRound(currentGame.id)}
+                  >
+                    <Text style={[styles.orgButtonText, { color: '#FFF' }]}>Comenzar Ronda {currentGame.currentRound + 1}</Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
-            {currentGame.winners?.some(w => w.id === currentUser.id) && (
-              <Text style={styles.congratsText}>¡FELICIDADES, GANASTE!</Text>
+
+            {currentGame.status === 'finished' && (
+              <>
+                <Text style={styles.winnerSubText}>Resumen de Ganancias:</Text>
+                <ScrollView style={{ maxHeight: 200, width: '100%', marginVertical: 10 }}>
+                  {(() => {
+                    // Calculate total earnings per player
+                    const earnings = {};
+                    currentGame.roundWinners?.forEach(rw => {
+                      rw.winners.forEach(w => {
+                        earnings[w.alias] = (earnings[w.alias] || 0) + rw.prizePerWinner;
+                      });
+                    });
+                    
+                    const playersWithEarnings = Object.entries(earnings).sort((a, b) => b[1] - a[1]);
+                    
+                    if (playersWithEarnings.length === 0) {
+                      return <Text style={{textAlign: 'center', marginTop: 10}}>Nadie ganó premios en este torneo.</Text>;
+                    }
+
+                    return playersWithEarnings.map(([alias, amount]) => (
+                      <View key={alias} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EEE' }}>
+                        <Text style={{ fontWeight: 'bold' }}>{alias}</Text>
+                        <Text style={{ color: theme.colors.success, fontWeight: 'bold' }}>+${amount.toFixed(2)}</Text>
+                      </View>
+                    ));
+                  })()}
+                </ScrollView>
+              </>
             )}
+
             <TouchableOpacity 
-              style={styles.backButton} 
+              style={[styles.backButton, { marginTop: 15 }]} 
               onPress={() => navigation.navigate('UserDashboard')}
             >
-              <Text style={styles.backButtonText}>Salir</Text>
+              <Text style={styles.backButtonText}>{currentGame.status === 'finished' ? 'Salir' : 'Volver al Menú'}</Text>
             </TouchableOpacity>
           </View>
         </View>
