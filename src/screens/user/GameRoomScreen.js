@@ -5,7 +5,15 @@ import { theme } from '../../config/theme';
 import LoteriaCard from '../../components/LoteriaCard';
 import { loteriaCards } from '../../config/cards';
 import * as Speech from 'expo-speech';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { Platform } from 'react-native';
+
+let BannerAd, BannerAdSize, TestIds;
+if (Platform.OS !== 'web') {
+  const adMob = require('react-native-google-mobile-ads');
+  BannerAd = adMob.BannerAd;
+  BannerAdSize = adMob.BannerAdSize;
+  TestIds = adMob.TestIds;
+}
 
 export default function GameRoomScreen({ navigation }) {
   const currentUser = useAppStore(state => state.currentUser);
@@ -293,13 +301,15 @@ export default function GameRoomScreen({ navigation }) {
         ))}
       </ScrollView>
 
-      <View style={{ alignItems: 'center', backgroundColor: '#FFF' }}>
-        <BannerAd
-          unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
-          size={BannerAdSize.BANNER}
-          requestOptions={{ requestNonPersonalizedAdsOnly: true }}
-        />
-      </View>
+      {Platform.OS !== 'web' && BannerAd && (
+        <View style={{ alignItems: 'center', backgroundColor: '#FFF' }}>
+          <BannerAd
+            unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
+            size={BannerAdSize.BANNER}
+            requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+          />
+        </View>
+      )}
 
       {/* Modal Fin de Ronda o Torneo */}
       {(currentGame.status === 'finished' || currentGame.status === 'round_finished') && (
