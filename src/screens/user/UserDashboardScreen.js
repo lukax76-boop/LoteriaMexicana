@@ -3,15 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, TextInput,
 import { useAppStore } from '../../store/useAppStore';
 import { theme } from '../../config/theme';
 import LoteriaCard from '../../components/LoteriaCard';
-import { Platform } from 'react-native';
-
-let BannerAd, BannerAdSize, TestIds;
-if (Platform.OS !== 'web') {
-  const adMob = require('react-native-google-mobile-ads');
-  BannerAd = adMob.BannerAd;
-  BannerAdSize = adMob.BannerAdSize;
-  TestIds = adMob.TestIds;
-}
+import { BannerAd, BannerAdSize, TestIds } from '../../utils/AdMob';
 
 export default function UserDashboardScreen({ navigation }) {
   const currentUser = useAppStore(state => state.currentUser);
@@ -262,15 +254,13 @@ export default function UserDashboardScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {Platform.OS !== 'web' && BannerAd && (
-        <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 10 }}>
-          <BannerAd
-            unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
-            size={BannerAdSize.BANNER}
-            requestOptions={{ requestNonPersonalizedAdsOnly: true }}
-          />
-        </View>
-      )}
+      <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 10 }}>
+        <BannerAd
+          unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
+          size={BannerAdSize.BANNER}
+          requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+        />
+      </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
         <Text style={styles.logoutText}>Cerrar Sesión</Text>

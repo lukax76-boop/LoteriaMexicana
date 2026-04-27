@@ -3,8 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text, Platform } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { StatusBar } from 'expo-status-bar';
-import mobileAds from 'react-native-google-mobile-ads';
-
+import { mobileAds } from './src/utils/AdMob';
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   const style = document.createElement('style');
