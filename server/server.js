@@ -157,7 +157,7 @@ io.on('connection', (socket) => {
       }
 
       case 'CREATE_GAME': {
-        const { id, price, prizePercentageAdmin, creatorId, type: gameType, scheduledDate, scheduledTime } = payload || {};
+        const { id, price, prizePercentageAdmin, creatorId, type: gameType, scheduledDate, scheduledTime, winMode } = payload || {};
         const isUniversal = gameType !== 'private';
         const newGame = {
           id: id || (isUniversal ? 'univ_' + Date.now().toString() : Math.random().toString(36).substring(2, 8).toUpperCase()),
@@ -168,6 +168,7 @@ io.on('connection', (socket) => {
           prizePercentageAdmin: prizePercentageAdmin || 80,
           scheduledDate: isUniversal ? scheduledDate : null,
           scheduledTime: isUniversal ? scheduledTime : null,
+          winMode: winMode || 'full_board',
           pot: 0,
           currentCards: (() => {
             const deck = Array.from({ length: 54 }, (_, i) => i + 1);
@@ -226,12 +227,46 @@ io.on('connection', (socket) => {
             }
           }
 
-          // Verificamos si la tabla está llena Y completamente marcada con cartas que sí salieron
-          const isFullAndMarked = board.cards.every(c => board.markedCards?.includes(c) && game.drawnCards.includes(c));
+          // Validar condiciones de victoria
+          let isWinner = false;
+
+          if (game.winMode === 'traditional') {
+            const winningPatterns = [
+              [5, 6, 9, 10], // Centro
+              [0, 3, 12, 15], // Esquinas
+              [0, 1, 2, 3], // Línea Horizontal 1
+              [4, 5, 6, 7], // Línea Horizontal 2
+              [8, 9, 10, 11], // Línea Horizontal 3
+              [12, 13, 14, 15], // Línea Horizontal 4
+              [0, 4, 8, 12], // Línea Vertical 1
+              [1, 5, 9, 13], // Línea Vertical 2
+              [2, 6, 10, 14], // Línea Vertical 3
+              [3, 7, 11, 15], // Línea Vertical 4
+              [0, 5, 10, 15], // Diagonal 1
+              [3, 6, 9, 12], // Diagonal 2
+            ];
+            
+            isWinner = winningPatterns.some(pattern => {
+              return pattern.every(index => {
+                const card = board.cards[index];
+                return board.markedCards?.includes(card) && game.drawnCards.includes(card);
+              });
+            });
+            
+          } else if (game.winMode === 'center') {
+            const centerPattern = [5, 6, 9, 10];
+            isWinner = centerPattern.every(index => {
+              const card = board.cards[index];
+              return board.markedCards?.includes(card) && game.drawnCards.includes(card);
+            });
+          } else {
+            // full_board (Default)
+            isWinner = board.cards.every(c => board.markedCards?.includes(c) && game.drawnCards.includes(c));
+          }
           
-          if (isFullAndMarked) {
+          if (isWinner) {
             const user = state.users.find(u => u.id === board.userId);
-            if (user) winners.push(user);
+            if (user && !winners.find(w => w.id === user.id)) winners.push(user);
           }
         });
 

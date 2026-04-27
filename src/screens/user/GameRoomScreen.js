@@ -114,6 +114,14 @@ export default function GameRoomScreen({ navigation }) {
     }
   });
 
+  const getWinModeText = () => {
+    switch(currentGame.winMode) {
+      case 'traditional': return '🏆 Gana: Tradicional';
+      case 'center': return '🏆 Gana: Solo Centro';
+      default: return '🏆 Gana: Carta Llena';
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -123,6 +131,7 @@ export default function GameRoomScreen({ navigation }) {
         
         <View style={{ alignItems: 'flex-end', flex: 1 }}>
           <Text style={styles.potText}>Premio: ${prize}</Text>
+          <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold', marginTop: 2, marginBottom: 2 }}>{getWinModeText()}</Text>
           <TouchableOpacity 
             style={{ 
               backgroundColor: isAudioEnabled ? theme.colors.success : 'rgba(255,255,255,0.3)', 

@@ -26,6 +26,10 @@ export default function UserDashboardScreen({ navigation }) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [gameToShare, setGameToShare] = useState(null);
 
+  // State for create game modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [winMode, setWinMode] = useState('full_board'); // 'full_board', 'traditional', 'center'
+
   const myGroups = groups.filter(g => g.members.includes(currentUser.id));
 
   const handleBuyCredits = () => {
@@ -34,7 +38,12 @@ export default function UserDashboardScreen({ navigation }) {
   };
 
   const handleCreatePrivate = () => {
-    createPrivateGame(50);
+    setShowCreateModal(true);
+  };
+
+  const confirmCreatePrivate = () => {
+    createPrivateGame(50, winMode);
+    setShowCreateModal(false);
   };
 
   const handleJoinPrivate = () => {
@@ -275,6 +284,46 @@ export default function UserDashboardScreen({ navigation }) {
             )}
             
             <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowShareModal(false)}>
+              <Text style={styles.closeModalText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal para Crear Partida */}
+      <Modal visible={showCreateModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Configurar Jugada</Text>
+            
+            <Text style={{ fontWeight: 'bold', alignSelf: 'flex-start', marginBottom: 10, marginTop: 10 }}>Modo de ganar:</Text>
+            
+            <TouchableOpacity 
+              style={[styles.winModeBtn, winMode === 'full_board' && styles.winModeBtnActive]}
+              onPress={() => setWinMode('full_board')}
+            >
+              <Text style={[styles.winModeText, winMode === 'full_board' && styles.winModeTextActive]}>Carta Llena (16 cartas)</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.winModeBtn, winMode === 'traditional' && styles.winModeBtnActive]}
+              onPress={() => setWinMode('traditional')}
+            >
+              <Text style={[styles.winModeText, winMode === 'traditional' && styles.winModeTextActive]}>Formas Tradicionales (Línea, Esquinas, Centro)</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.winModeBtn, winMode === 'center' && styles.winModeBtnActive]}
+              onPress={() => setWinMode('center')}
+            >
+              <Text style={[styles.winModeText, winMode === 'center' && styles.winModeTextActive]}>Solo Centro (4 cartas interiores)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.createBtn, { width: '100%', marginTop: 20 }]} onPress={confirmCreatePrivate}>
+              <Text style={styles.createBtnText}>Crear Jugada</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowCreateModal(false)}>
               <Text style={styles.closeModalText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
@@ -593,5 +642,27 @@ const styles = StyleSheet.create({
     color: theme.colors.textLight,
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  winModeBtn: {
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#CCC',
+    borderRadius: 8,
+    width: '100%',
+    marginBottom: 10,
+    backgroundColor: '#F5F5F5'
+  },
+  winModeBtnActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: '#E3F2FD'
+  },
+  winModeText: {
+    color: theme.colors.text,
+    fontSize: 14,
+    textAlign: 'center'
+  },
+  winModeTextActive: {
+    color: theme.colors.primary,
+    fontWeight: 'bold'
   }
 });

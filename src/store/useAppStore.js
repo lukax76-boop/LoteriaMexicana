@@ -110,11 +110,11 @@ export const useAppStore = create(
           socket.emit('dispatch', { type: 'CREATE_GAME', payload: { price, prizePercentageAdmin, type: 'universal', scheduledDate, scheduledTime } });
         },
         
-        createPrivateGame: (price = 50) => {
+        createPrivateGame: (price = 50, winMode = 'full_board') => {
           const user = get().currentUser;
           if (user) {
             const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-            socket.emit('dispatch', { type: 'CREATE_GAME', payload: { id: gameId, price, prizePercentageAdmin: 0, creatorId: user.id, type: 'private' } });
+            socket.emit('dispatch', { type: 'CREATE_GAME', payload: { id: gameId, price, prizePercentageAdmin: 0, creatorId: user.id, type: 'private', winMode } });
             set({ joinedGameId: gameId });
           }
         },
