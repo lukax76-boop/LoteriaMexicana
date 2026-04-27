@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "react-native-google-mobile-ads": {
       "android_app_id": "ca-app-pub-8231944937056047~2490367930",
       "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
