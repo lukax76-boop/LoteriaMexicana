@@ -307,11 +307,11 @@ export default function UserDashboardScreen({ navigation }) {
               Las rondas 1 hasta N-1 se jugarán en "Formas Tradicionales". La ronda final será "Solo Centro" y pagará el 50% de la bolsa acumulada.
             </Text>
             
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 10 }}>
-              {[1, 2, 3, 5].map(rounds => (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', marginBottom: 10 }}>
+              {[1, 2, 3, 5, 7, 10].map(rounds => (
                 <TouchableOpacity 
                   key={rounds}
-                  style={[styles.winModeBtn, { flex: 1, marginHorizontal: 2, padding: 10 }, totalRounds === rounds && styles.winModeBtnActive]}
+                  style={[styles.winModeBtn, { width: '30%', marginHorizontal: '1%', padding: 10 }, totalRounds === rounds && styles.winModeBtnActive]}
                   onPress={() => setTotalRounds(rounds)}
                 >
                   <Text style={[styles.winModeText, totalRounds === rounds && styles.winModeTextActive]}>
