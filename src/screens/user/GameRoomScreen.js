@@ -6,6 +6,7 @@ import LoteriaCard from '../../components/LoteriaCard';
 import { loteriaCards } from '../../config/cards';
 import * as Speech from 'expo-speech';
 import { BannerAd, BannerAdSize, TestIds } from '../../utils/AdMob';
+import { useIsFocused } from '@react-navigation/native';
 
 export default function GameRoomScreen({ navigation }) {
   const currentUser = useAppStore(state => state.currentUser);
@@ -13,6 +14,7 @@ export default function GameRoomScreen({ navigation }) {
   const joinedGameId = useAppStore(state => state.joinedGameId);
   const currentGame = games.find(g => g.id === joinedGameId);
   const userBoards = useAppStore(state => state.userBoards);
+  const isFocused = useIsFocused();
   
   const startGame = useAppStore(state => state.startGame);
   const drawCard = useAppStore(state => state.drawCard);
@@ -54,7 +56,7 @@ export default function GameRoomScreen({ navigation }) {
 
   // Efecto para narrar la carta sacada
   React.useEffect(() => {
-    if (isAudioEnabled && currentGame?.drawnCards?.length > 0) {
+    if (isFocused && isAudioEnabled && currentGame?.drawnCards?.length > 0) {
       const lastCardId = currentGame.drawnCards[currentGame.drawnCards.length - 1];
       const cardInfo = loteriaCards.find(c => c.id === lastCardId);
       
@@ -71,7 +73,7 @@ export default function GameRoomScreen({ navigation }) {
         }, 50);
       }
     }
-  }, [currentGame?.drawnCards?.length, isAudioEnabled]);
+  }, [currentGame?.drawnCards?.length, isAudioEnabled, isFocused]);
 
   if (!currentGame) {
     return (

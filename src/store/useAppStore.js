@@ -14,6 +14,7 @@ const socket = io(SERVER_URL, {
 const initialState = {
   currentUser: null, // { id, email, alias, role: 'admin' | 'user', credits: 0 }
   users: [],
+  games: [],
   joinedGameId: null,
   userBoards: [],
   groups: [],

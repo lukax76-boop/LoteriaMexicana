@@ -91,11 +91,12 @@ export default function UserDashboardScreen({ navigation }) {
   };
 
   // Find games
-  const universalGame = games.slice().reverse().find(g => g.type === 'universal');
-  const privateGame = games.find(g => g.id === joinedGameId && g.type === 'private');
+  const safeGames = games || [];
+  const universalGame = safeGames.slice().reverse().find(g => g.type === 'universal');
+  const privateGame = safeGames.find(g => g.id === joinedGameId && g.type === 'private');
   
-  const publicGames = games.filter(g => g.type === 'public_tournament' && g.status === 'pending' && (!g.expiresAt || g.expiresAt > Date.now()));
-  const myPublicGame = games.find(g => g.id === joinedGameId && g.type === 'public_tournament');
+  const publicGames = safeGames.filter(g => g.type === 'public_tournament' && g.status === 'pending' && (!g.expiresAt || g.expiresAt > Date.now()));
+  const myPublicGame = safeGames.find(g => g.id === joinedGameId && g.type === 'public_tournament');
 
 
   const renderGameCard = (gameToRender, isUniversal) => {
