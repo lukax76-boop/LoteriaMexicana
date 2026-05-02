@@ -31,6 +31,13 @@ export default function UserDashboardScreen({ navigation }) {
   const [totalRounds, setTotalRounds] = useState(1);
   const [isPublic, setIsPublic] = useState(false);
   const [, setTick] = useState(0);
+  const [showAd, setShowAd] = useState(false);
+
+  useEffect(() => {
+    // Retrasar renderizado de anuncios para evitar crasheo en la nueva arquitectura
+    const adTimer = setTimeout(() => setShowAd(true), 800);
+    return () => clearTimeout(adTimer);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'public') {
@@ -323,12 +330,14 @@ export default function UserDashboardScreen({ navigation }) {
         )}
       </ScrollView>
 
-      <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 10 }}>
-        <BannerAd
-          unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
-          size={BannerAdSize.BANNER}
-          requestOptions={{ requestNonPersonalizedAdsOnly: true }}
-        />
+      <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 10, minHeight: 50 }}>
+        {showAd && (
+          <BannerAd
+            unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
+            size={BannerAdSize.BANNER}
+            requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+          />
+        )}
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>

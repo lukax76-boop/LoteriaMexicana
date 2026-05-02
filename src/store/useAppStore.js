@@ -32,15 +32,13 @@ export const useAppStore = create(
           // (update its credits/info if the server has newer info)
           let updatedCurrentUser = state.currentUser;
           if (updatedCurrentUser) {
-            const serverUser = serverState.users.find(u => u.id === updatedCurrentUser.id);
+            const serverUser = serverState.users?.find(u => u.id === updatedCurrentUser.id);
             if (serverUser) {
               updatedCurrentUser = serverUser;
-            } else {
-              // Si el servidor se reinició, la base de datos se borró. Forzamos cierre de sesión local.
-              updatedCurrentUser = null;
             }
+            // Mantenemos al usuario local si el servidor no lo manda (para evitar deslogueo en reinicios)
           }
-          return { ...serverState, currentUser: updatedCurrentUser };
+          return { ...serverState, currentUser: updatedCurrentUser, onlinePlayers: state.onlinePlayers };
         });
       });
 

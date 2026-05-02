@@ -24,6 +24,13 @@ export default function GameRoomScreen({ navigation }) {
   const [isAudioEnabled, setIsAudioEnabled] = React.useState(true);
   const [isDrawDisabled, setIsDrawDisabled] = React.useState(false);
   const [cooldownTime, setCooldownTime] = React.useState(0);
+  const [showAd, setShowAd] = React.useState(false);
+  const lastSpokenRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const adTimer = setTimeout(() => setShowAd(true), 800);
+    return () => clearTimeout(adTimer);
+  }, []);
 
   const handleDrawCard = () => {
     if (isDrawDisabled) return;
@@ -51,7 +58,8 @@ export default function GameRoomScreen({ navigation }) {
       const lastCardId = currentGame.drawnCards[currentGame.drawnCards.length - 1];
       const cardInfo = loteriaCards.find(c => c.id === lastCardId);
       
-      if (cardInfo) {
+      if (cardInfo && lastSpokenRef.current !== lastCardId) {
+        lastSpokenRef.current = lastCardId; // Guardar en memoria para evitar hablar doble
         Speech.stop(); // Detener audio anterior si vienen muy rápido
         
         setTimeout(() => {
@@ -317,12 +325,14 @@ export default function GameRoomScreen({ navigation }) {
         ))}
       </ScrollView>
 
-      <View style={{ alignItems: 'center', backgroundColor: '#FFF' }}>
-        <BannerAd
-          unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
-          size={BannerAdSize.BANNER}
-          requestOptions={{ requestNonPersonalizedAdsOnly: true }}
-        />
+      <View style={{ alignItems: 'center', backgroundColor: '#FFF', minHeight: 50 }}>
+        {showAd && (
+          <BannerAd
+            unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-8231944937056047/4291594252'}
+            size={BannerAdSize.BANNER}
+            requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+          />
+        )}
       </View>
 
       {/* Modal Fin de Ronda o Torneo */}
