@@ -21,7 +21,27 @@ export default function GameRoomScreen({ navigation }) {
   const unmarkCard = useAppStore(state => state.unmarkCard);
   const startNextRound = useAppStore(state => state.startNextRound);
 
-  const [isAudioEnabled, setIsAudioEnabled] = React.useState(false);
+  const [isAudioEnabled, setIsAudioEnabled] = React.useState(true);
+  const [isDrawDisabled, setIsDrawDisabled] = React.useState(false);
+  const [cooldownTime, setCooldownTime] = React.useState(0);
+
+  const handleDrawCard = () => {
+    if (isDrawDisabled) return;
+    drawCard(currentGame.id);
+    setIsDrawDisabled(true);
+    setCooldownTime(3);
+    
+    let time = 3;
+    const interval = setInterval(() => {
+      time -= 1;
+      setCooldownTime(time);
+      if (time <= 0) {
+        clearInterval(interval);
+        setIsDrawDisabled(false);
+      }
+    }, 1000);
+  };
+
 
   if (!currentUser) return null;
 
@@ -216,9 +236,13 @@ export default function GameRoomScreen({ navigation }) {
           )}
 
           {currentGame.status === 'active' && (
-             <TouchableOpacity style={[styles.orgButton, { backgroundColor: theme.colors.secondary }]} onPress={() => drawCard(currentGame.id)}>
-               <Text style={[styles.orgButtonText, { color: theme.colors.text }]}>
-                 {currentGame.drawnCards.length > 0 ? 'SACAR SIGUIENTE' : 'SACAR PRIMERA CARTA'}
+             <TouchableOpacity 
+               style={[styles.orgButton, { backgroundColor: isDrawDisabled ? '#999' : theme.colors.secondary }]} 
+               onPress={handleDrawCard}
+               disabled={isDrawDisabled}
+             >
+               <Text style={[styles.orgButtonText, { color: isDrawDisabled ? '#EEE' : theme.colors.text }]}>
+                 {isDrawDisabled ? `ESPERANDO (${cooldownTime}s)...` : (currentGame.drawnCards.length > 0 ? 'SACAR SIGUIENTE' : 'SACAR PRIMERA CARTA')}
                </Text>
              </TouchableOpacity>
           )}
@@ -357,12 +381,20 @@ export default function GameRoomScreen({ navigation }) {
               </>
             )}
 
-            <TouchableOpacity 
-              style={[styles.backButton, { marginTop: 15 }]} 
-              onPress={() => navigation.navigate('UserDashboard')}
-            >
-              <Text style={styles.backButtonText}>{currentGame.status === 'finished' ? 'Salir' : 'Volver al Menú'}</Text>
-            </TouchableOpacity>
+            {currentGame.status === 'finished' ? (
+              <TouchableOpacity 
+                style={[styles.backButton, { marginTop: 15 }]} 
+                onPress={() => navigation.navigate('UserDashboard')}
+              >
+                <Text style={styles.backButtonText}>Salir del Torneo</Text>
+              </TouchableOpacity>
+            ) : (
+              !isOrganizer && (
+                <Text style={{ marginTop: 20, fontStyle: 'italic', color: '#666', textAlign: 'center' }}>
+                  Esperando que el organizador inicie la siguiente ronda...
+                </Text>
+              )
+            )}
           </View>
         </View>
       )}

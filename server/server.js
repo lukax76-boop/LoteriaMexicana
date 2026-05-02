@@ -149,6 +149,19 @@ io.on('connection', (socket) => {
     console.log('Action received:', type);
 
     switch (type) {
+      case 'JOIN_GAME': {
+        const { userId, gameId } = payload;
+        const game = state.games.find(g => g.id === gameId);
+        if (game) {
+          if (game.type === 'public_tournament' && game.status === 'pending' && game.expiresAt && Date.now() > game.expiresAt) {
+            console.log(`User ${userId} tried to join expired public tournament ${gameId}`);
+            break;
+          }
+          // The socket handles standard joins in frontend by checking state
+        }
+        break;
+      }
+
       case 'REGISTER': {
         const { email, alias, password, role } = payload;
         const newUser = { id: Date.now().toString(), email, alias, password, role, credits: 100 };
@@ -168,12 +181,16 @@ io.on('connection', (socket) => {
       }
 
       case 'CREATE_GAME': {
-        const { id, price, prizePercentageAdmin, creatorId, type: gameType, scheduledDate, scheduledTime, totalRounds } = payload || {};
+        const { id, price, prizePercentageAdmin, creatorId, type: gameType, scheduledDate, scheduledTime, totalRounds, isPublic } = payload || {};
         const isUniversal = gameType !== 'private';
+        let type = isUniversal ? 'universal' : 'private';
+        if (isPublic) type = 'public_tournament';
+        
         const rounds = totalRounds || 1;
         const newGame = {
           id: id || (isUniversal ? 'univ_' + Date.now().toString() : Math.random().toString(36).substring(2, 8).toUpperCase()),
-          type: isUniversal ? 'universal' : 'private',
+          type,
+          expiresAt: isPublic ? Date.now() + 5 * 60000 : null,
           creatorId: creatorId || 'admin',
           status: 'pending',
           price: price || 50,

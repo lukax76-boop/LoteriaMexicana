@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, TextInput, Modal } from 'react-native';
 import { useAppStore } from '../../store/useAppStore';
 import { theme } from '../../config/theme';
@@ -29,6 +29,16 @@ export default function UserDashboardScreen({ navigation }) {
   // State for create game modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [totalRounds, setTotalRounds] = useState(1);
+  const [isPublic, setIsPublic] = useState(false);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (activeTab === 'public') {
+      const interval = setInterval(() => setTick(t => t + 1), 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
 
   const onlinePlayers = useAppStore(state => state.onlinePlayers);
   const myGroups = groups.filter(g => g.members.includes(currentUser.id));
@@ -43,7 +53,7 @@ export default function UserDashboardScreen({ navigation }) {
   };
 
   const confirmCreatePrivate = () => {
-    createPrivateGame(50, totalRounds);
+    createPrivateGame(50, totalRounds, isPublic);
     setShowCreateModal(false);
   };
 
@@ -76,6 +86,10 @@ export default function UserDashboardScreen({ navigation }) {
   // Find games
   const universalGame = games.slice().reverse().find(g => g.type === 'universal');
   const privateGame = games.find(g => g.id === joinedGameId && g.type === 'private');
+  
+  const publicGames = games.filter(g => g.type === 'public_tournament' && g.status === 'pending' && (!g.expiresAt || g.expiresAt > Date.now()));
+  const myPublicGame = games.find(g => g.id === joinedGameId && g.type === 'public_tournament');
+
 
   const renderGameCard = (gameToRender, isUniversal) => {
     if (!gameToRender) {
@@ -209,6 +223,12 @@ export default function UserDashboardScreen({ navigation }) {
           <Text style={[styles.tabText, activeTab === 'universal' && styles.tabTextActive]}>Universal</Text>
         </TouchableOpacity>
         <TouchableOpacity 
+          style={[styles.tab, activeTab === 'public' && styles.tabActive]} 
+          onPress={() => setActiveTab('public')}
+        >
+          <Text style={[styles.tabText, activeTab === 'public' && styles.tabTextActive]}>Públicos</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
           style={[styles.tab, activeTab === 'private' && styles.tabActive]} 
           onPress={() => setActiveTab('private')}
         >
@@ -217,9 +237,58 @@ export default function UserDashboardScreen({ navigation }) {
       </View>
 
       <ScrollView style={styles.gameSection} contentContainerStyle={{ paddingBottom: 20 }}>
-        {activeTab === 'universal' ? (
-          renderGameCard(universalGame, true)
-        ) : (
+        {activeTab === 'universal' && renderGameCard(universalGame, true)}
+        
+        {activeTab === 'public' && (
+          <View>
+            <Text style={styles.sectionTitle}>Torneos Disponibles</Text>
+            {publicGames.length === 0 ? (
+              <View style={{ alignItems: 'center', marginTop: 40 }}>
+                <Text style={styles.noGameText}>No hay torneos públicos esperando jugadores.</Text>
+              </View>
+            ) : (
+              publicGames.map(game => {
+                const timeLeftMs = game.expiresAt - Date.now();
+                const minutes = Math.floor(timeLeftMs / 60000);
+                const seconds = Math.floor((timeLeftMs % 60000) / 1000);
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                return (
+                  <View key={game.id} style={[styles.gameCard, { borderColor: theme.colors.secondary, borderWidth: 2 }]}>
+                    <View style={styles.gameCardHeader}>
+                      <Text style={styles.gameType}>🌐 TORNEO PÚBLICO ({game.totalRounds} Rondas)</Text>
+                      <View style={{ backgroundColor: theme.colors.secondary, paddingHorizontal: 10, borderRadius: 10 }}>
+                         <Text style={{ color: 'white', fontWeight: 'bold' }}>Cierra en {timeString}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.gameDetails}>
+                      <Text style={styles.gameInfo}>Entrada: ${game.price}</Text>
+                      <Text style={styles.gameInfo}>ID: {game.id}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={[styles.playBtn, { backgroundColor: theme.colors.secondary }]} 
+                      onPress={() => {
+                        joinPrivateGame(game.id);
+                        navigation.navigate('BuyBoard');
+                      }}
+                    >
+                      <Text style={styles.playBtnText}>¡Unirse al Torneo!</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+            )}
+
+            {myPublicGame && (
+              <View style={{ marginTop: 20 }}>
+                <Text style={styles.sectionTitle}>Tu Torneo Público Seleccionado</Text>
+                {renderGameCard(myPublicGame, false)}
+              </View>
+            )}
+          </View>
+        )}
+
+        {activeTab === 'private' && (
           <View>
             <View style={styles.privateActions}>
               <TouchableOpacity style={styles.createBtn} onPress={handleCreatePrivate}>
@@ -320,6 +389,27 @@ export default function UserDashboardScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={{ fontWeight: 'bold', alignSelf: 'flex-start', marginBottom: 10, marginTop: 20 }}>Visibilidad del Torneo:</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 10 }}>
+              <TouchableOpacity 
+                style={[styles.winModeBtn, { width: '48%', padding: 10 }, !isPublic && styles.winModeBtnActive]}
+                onPress={() => setIsPublic(false)}
+              >
+                <Text style={[styles.winModeText, !isPublic && styles.winModeTextActive]}>🔒 Privado</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.winModeBtn, { width: '48%', padding: 10 }, isPublic && styles.winModeBtnActive]}
+                onPress={() => setIsPublic(true)}
+              >
+                <Text style={[styles.winModeText, isPublic && styles.winModeTextActive]}>🌐 Público</Text>
+              </TouchableOpacity>
+            </View>
+            {isPublic && (
+              <Text style={{ color: theme.colors.secondary, fontSize: 12, marginBottom: 15, textAlign: 'center', fontWeight: 'bold' }}>
+                Tu torneo será visible para todos por 5 minutos antes de cerrarse.
+              </Text>
+            )}
 
             <TouchableOpacity style={[styles.createBtn, { width: '100%', marginTop: 20 }]} onPress={confirmCreatePrivate}>
               <Text style={styles.createBtnText}>Crear Torneo</Text>
