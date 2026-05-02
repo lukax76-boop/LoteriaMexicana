@@ -120,6 +120,11 @@ async function loadStateFromDB() {
 
     console.log('State loaded from DB successfully! Records found:');
     console.log(`Users: ${state.users.length}, Games: ${state.games.length}, Boards: ${state.userBoards.length}, Groups: ${state.groups.length}, Messages: ${state.messages.length}`);
+    
+    // Broadcast the fully loaded state to any clients that connected while DB was loading
+    if (io) {
+      io.emit('syncState', state);
+    }
   } catch (err) {
     console.error('Error loading state from DB:', err);
   }
